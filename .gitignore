@@ -1,0 +1,19 @@
+# Python
+
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+Thumbs.db
+build/
+.cache/
+.Python
+*.log
+develop-eggs/
+.ruff_cache/
+*.egg
+dist/
+*.egg-info/
+Desktop.ini
+.venv/
