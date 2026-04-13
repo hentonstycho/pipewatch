@@ -1,84 +1,85 @@
-"""Pipeline health checker — evaluates metrics against configured thresholds."""
+"""Pipeline health checking logic."""
+from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
-from pipewatch.config import PipelineConfig, ThresholdConfig
+from pipewatch.config import PipelineConfig, PipewatchConfig
 
 
 @dataclass
 class CheckResult:
     pipeline_name: str
-    status: str  # "ok", "warning", "critical"
-    violations: list[str] = field(default_factory=list)
-    checked_at: datetime = field(default_factory=datetime.utcnow)
+    healthy: bool
+    violations: List[str]
+    row_count: Optional[float] = None
+    error_rate: Optional[float] = None
+    latency_seconds: Optional[float] = None
+    checked_at: Optional[str] = None
 
-    @property
-    def is_healthy(self) -> bool:
-        return self.status == "ok"
+
+def is_healthy(result: CheckResult) -> bool:
+    return result.healthy
 
 
-def check_pipeline(pipeline: PipelineConfig, metrics: dict) -> CheckResult:
-    """Evaluate pipeline metrics against its thresholds.
+def check_pipeline(
+    pipeline: PipelineConfig,
+    row_count: Optional[float] = None,
+    error_rate: Optional[float] = None,
+    latency_seconds: Optional[float] = None,
+    checked_at: Optional[str] = None,
+) -> CheckResult:
+    """Evaluate a single pipeline against its configured thresholds."""
+    violations: List[str] = []
+    t = pipeline.thresholds
 
-    Args:
-        pipeline: The pipeline configuration with thresholds.
-        metrics: A dict of current metric values, e.g.:
-                 {"row_count": 500, "error_rate": 0.03, "latency_seconds": 120}
-
-    Returns:
-        A CheckResult describing the health status.
-    """
-    violations: list[str] = []
-    thresholds: ThresholdConfig = pipeline.thresholds
-
-    row_count: Optional[int] = metrics.get("row_count")
-    error_rate: Optional[float] = metrics.get("error_rate")
-    latency: Optional[float] = metrics.get("latency_seconds")
-
-    if thresholds.min_rows is not None and row_count is not None:
-        if row_count < thresholds.min_rows:
-            violations.append(
-                f"row_count {row_count} is below min_rows {thresholds.min_rows}"
-            )
-
-    if thresholds.max_error_rate is not None and error_rate is not None:
-        if error_rate > thresholds.max_error_rate:
-            violations.append(
-                f"error_rate {error_rate:.4f} exceeds max_error_rate {thresholds.max_error_rate}"
-            )
-
-    if thresholds.max_latency_seconds is not None and latency is not None:
-        if latency > thresholds.max_latency_seconds:
-            violations.append(
-                f"latency_seconds {latency} exceeds max_latency_seconds {thresholds.max_latency_seconds}"
-            )
-
-    if violations:
-        status = "critical"
-    else:
-        status = "ok"
+    if t is not None:
+        if t.min_row_count is not None and row_count is not None:
+            if row_count < t.min_row_count:
+                violations.append(
+                    f"row_count {row_count} below min {t.min_row_count}"
+                )
+        if t.max_error_rate is not None and error_rate is not None:
+            if error_rate > t.max_error_rate:
+                violations.append(
+                    f"error_rate {error_rate} above max {t.max_error_rate}"
+                )
+        if t.max_latency_seconds is not None and latency_seconds is not None:
+            if latency_seconds > t.max_latency_seconds:
+                violations.append(
+                    f"latency {latency_seconds}s above max {t.max_latency_seconds}s"
+                )
 
     return CheckResult(
         pipeline_name=pipeline.name,
-        status=status,
+        healthy=len(violations) == 0,
         violations=violations,
+        row_count=row_count,
+        error_rate=error_rate,
+        latency_seconds=latency_seconds,
+        checked_at=checked_at,
     )
 
 
-def check_all_pipelines(pipelines: list[PipelineConfig], metrics_map: dict[str, dict]) -> list[CheckResult]:
-    """Run health checks for all configured pipelines.
+def check_all_pipelines(
+    config: PipewatchConfig,
+    metrics: dict,
+) -> List[CheckResult]:
+    """Check every pipeline defined in config using provided metrics dict.
 
-    Args:
-        pipelines: List of pipeline configurations.
-        metrics_map: Dict mapping pipeline name to its current metrics dict.
-
-    Returns:
-        List of CheckResult objects, one per pipeline.
+    ``metrics`` is keyed by pipeline name; values are dicts with optional
+    keys: row_count, error_rate, latency_seconds, checked_at.
     """
     results = []
-    for pipeline in pipelines:
-        metrics = metrics_map.get(pipeline.name, {})
-        results.append(check_pipeline(pipeline, metrics))
+    for pipeline in config.pipelines:
+        m = metrics.get(pipeline.name, {})
+        results.append(
+            check_pipeline(
+                pipeline,
+                row_count=m.get("row_count"),
+                error_rate=m.get("error_rate"),
+                latency_seconds=m.get("latency_seconds"),
+                checked_at=m.get("checked_at"),
+            )
+        )
     return results
