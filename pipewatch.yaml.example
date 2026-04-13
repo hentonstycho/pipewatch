@@ -1,0 +1,37 @@
+# pipewatch.yaml.example
+# Copy this file to pipewatch.yaml and fill in your values.
+
+pipelines:
+  - name: daily_sales_etl
+    thresholds:
+      # Alert if pipeline takes longer than this many seconds
+      max_duration_seconds: 300
+      # Alert if fewer than this many rows were processed
+      min_rows_processed: 500
+      # Alert if error rate exceeds this fraction (0.0 - 1.0)
+      max_error_rate: 0.02
+
+  - name: user_sync
+    thresholds:
+      max_duration_seconds: 60
+      min_rows_processed: 10
+
+  - name: inventory_refresh
+    thresholds:
+      max_duration_seconds: 120
+
+notifications:
+  # Slack incoming webhook URL (optional)
+  slack_webhook_url: https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+
+  # Email alert recipients (optional)
+  email_recipients:
+    - ops-team@example.com
+    - oncall@example.com
+
+  # SMTP settings for email notifications
+  smtp_host: smtp.example.com
+  smtp_port: 587
+  smtp_user: alerts@example.com
+  # Prefer using an environment variable: PIPEWATCH_SMTP_PASSWORD
+  smtp_password: ""
