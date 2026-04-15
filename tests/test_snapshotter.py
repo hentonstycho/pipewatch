@@ -52,6 +52,14 @@ def test_load_snapshot_round_trips(snap_dir: Path) -> None:
     assert "row_count" in data["results"][0]["violations"]
 
 
+def test_load_snapshot_contains_results_key(snap_dir: Path) -> None:
+    """Ensure the top-level 'results' key is always present in saved snapshots."""
+    results = [_result("pipe_b", True)]
+    path = save_snapshot(results, snapshot_dir=snap_dir)
+    data = load_snapshot(path)
+    assert "results" in data
+
+
 def test_list_snapshots_returns_sorted(snap_dir: Path) -> None:
     save_snapshot([_result("a", True)], label="first", snapshot_dir=snap_dir)
     save_snapshot([_result("b", True)], label="second", snapshot_dir=snap_dir)
@@ -92,6 +100,7 @@ def test_diff_snapshots_detects_new_pipeline() -> None:
 
 
 def test_diff_snapshots_detects_removed_pipeline() -> None:
+    """A pipeline present in the old snapshot but absent in the new one should be flagged."""
     old = {"results": [{"pipeline": "gone", "healthy": True, "violations": []}]}
     new: dict = {"results": []}
     lines = diff_snapshots(old, new)
