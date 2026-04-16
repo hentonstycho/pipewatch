@@ -93,3 +93,22 @@ def score_all(
     """Return scores for every pipeline, sorted worst-first."""
     scores = [score_pipeline(p, history_dir, window) for p in pipelines]
     return sorted(scores, key=lambda s: s.score)
+
+
+def summary(scores: List[PipelineScore]) -> dict:
+    """Return a brief summary dict for a list of pipeline scores.
+
+    Includes overall average score, counts per grade, and the names of any
+    pipelines currently graded F so callers can surface critical failures
+    without iterating the full list.
+    """
+    if not scores:
+        return {"average_score": None, "grade_counts": {}, "critical": []}
+
+    avg = round(sum(s.score for s in scores) / len(scores), 1)
+    grade_counts: dict[str, int] = {}
+    for s in scores:
+        grade_counts[s.grade] = grade_counts.get(s.grade, 0) + 1
+    critical = [s.pipeline for s in scores if s.grade == "F"]
+
+    return {"average_score": avg, "grade_counts": grade_counts, "critical": critical}
