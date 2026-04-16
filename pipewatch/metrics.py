@@ -18,6 +18,11 @@ class PipelineMetrics:
     avg_latency_seconds: Optional[float] = None
     uptime_pct: float = 100.0
 
+    @property
+    def is_healthy(self) -> bool:
+        """Return True if the pipeline has no recorded failures."""
+        return self.total_failures == 0
+
 
 def _average(values: List[float]) -> Optional[float]:
     return sum(values) / len(values) if values else None
