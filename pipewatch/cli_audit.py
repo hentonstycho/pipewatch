@@ -19,7 +19,8 @@ def audit_cmd() -> None:
 @click.option("--pipeline", default=None, help="Filter by pipeline name.")
 @click.option("--limit", default=20, show_default=True, help="Max entries to show.")
 @click.option("--config", "config_path", default="pipewatch.yaml", show_default=True)
-def log_cmd(pipeline: str | None, limit: int, config_path: str) -> None:
+@click.option("--failed-only", is_flag=True, default=False, help="Show only failed checks.")
+def log_cmd(pipeline: str | None, limit: int, config_path: str, failed_only: bool) -> None:
     """Print recent audit log entries."""
     cfg = load_config(config_path)
     entries = load_audit_log(cfg.data_dir)
@@ -29,6 +30,8 @@ def log_cmd(pipeline: str | None, limit: int, config_path: str) -> None:
             click.echo(f"Unknown pipeline: {pipeline}", err=True)
             sys.exit(2)
         entries = [e for e in entries if e["pipeline"] == pipeline]
+    if failed_only:
+        entries = [e for e in entries if not e["healthy"]]
     for entry in entries[-limit:]:
         status = "OK" if entry["healthy"] else "FAIL"
         viols = ", ".join(entry.get("violations") or []) or "-"
