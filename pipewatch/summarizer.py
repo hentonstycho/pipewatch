@@ -20,7 +20,7 @@ class PipelineSummaryLine:
     consecutive_fails: int
     avg_row_count: Optional[float]
     avg_error_rate: Optional[float]
-    avg_latency: Optional[float]
+    avg_latency_seconds: Optional[float]
     last_message: Optional[str]
 
 
@@ -42,7 +42,7 @@ def summarise_pipeline(
             consecutive_fails=0,
             avg_row_count=None,
             avg_error_rate=None,
-            avg_latency=None,
+            avg_latency_seconds=None,
             last_message=None,
         )
 
@@ -86,3 +86,17 @@ def summarise_all(
 ) -> List[PipelineSummaryLine]:
     """Return summary lines for every pipeline."""
     return [summarise_pipeline(p, history_dir=history_dir) for p in pipelines]
+
+
+def format_report(lines: List[PipelineSummaryLine]) -> str:
+    """Format a list of summary lines into a full multi-line report string.
+
+    Includes a header, one line per pipeline, and a footer with counts of
+    healthy, failing, and no-data pipelines.
+    """
+    formatted = [format_summary_line(line) for line in lines]
+    ok = sum(1 for l in lines if l.status == "OK")
+    fail = sum(1 for l in lines if l.status == "FAIL")
+    no_data = sum(1 for l in lines if l.status == "NO DATA")
+    footer = f"Pipelines: {len(lines)} total  ✅ {ok}  ❌ {fail}  ⚪ {no_data}"
+    return "\n".join(formatted + ["", footer])
