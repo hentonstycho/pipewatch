@@ -57,8 +57,19 @@ def list_cmd(snapshot_dir: Optional[str]) -> None:
 @click.argument("new_path")
 def diff_cmd(old_path: str, new_path: str) -> None:
     """Show differences between two snapshot files."""
-    old = load_snapshot(Path(old_path))
-    new = load_snapshot(Path(new_path))
+    old_file = Path(old_path)
+    new_file = Path(new_path)
+
+    if not old_file.exists():
+        raise click.BadParameter(f"File not found: {old_path}", param_hint="'OLD_PATH'")
+    if not new_file.exists():
+        raise click.BadParameter(f"File not found: {new_path}", param_hint="'NEW_PATH'")
+
+    old = load_snapshot(old_file)
+    new = load_snapshot(new_file)
     lines = diff_snapshots(old, new)
+    if not lines:
+        click.echo("No differences found.")
+        return
     for line in lines:
         click.echo(line)
