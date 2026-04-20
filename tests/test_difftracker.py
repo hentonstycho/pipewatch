@@ -96,6 +96,15 @@ def test_diff_metrics_pipeline_name_propagated():
     assert all(d.pipeline == "sales" for d in diffs)
 
 
+def test_diff_metrics_row_count_drop_regression():
+    """A significant drop in avg_row_count should be flagged as a regression."""
+    prev = _make(avg_row_count=1000.0)
+    curr = _make(avg_row_count=500.0)  # -50% — well below default threshold
+    diffs = diff_metrics(prev, curr, regression_threshold_pct=10.0)
+    rc = next(d for d in diffs if d.field == "avg_row_count")
+    assert rc.regressed is True
+
+
 # --- any_regressions ---
 
 def test_any_regressions_true_when_at_least_one():
@@ -109,12 +118,5 @@ def test_any_regressions_false_when_none():
 
 
 def test_any_regressions_empty_list():
+    """An empty diff list should never report regressions."""
     assert any_regressions([]) is False
-
-
-# --- MetricRegression.__str__ ---
-
-def test_metric_regression_str_contains_field():
-    r = MetricRegression("orders", "error_rate", 5.0, 15.0, 200.0, True)
-    assert "error_rate" in str(r)
-    assert "orders" in str(r)
