@@ -21,6 +21,11 @@ class LabeledResult:
     severity: str
     reason: Optional[str] = None
 
+    @property
+    def is_actionable(self) -> bool:
+        """Return True if this result requires attention (non-OK severity)."""
+        return self.severity != SEVERITY_OK
+
 
 def _consecutive_failures_severity(failures: int, warning_after: int, critical_after: int) -> str:
     if failures >= critical_after:
@@ -65,3 +70,18 @@ def label_all(
         label_result(r, history_dir, warning_after, critical_after)
         for r in results
     ]
+
+
+def filter_by_severity(
+    labeled_results: list[LabeledResult],
+    *severities: str,
+) -> list[LabeledResult]:
+    """Return only the labeled results whose severity is in *severities*.
+
+    Example::
+
+        critical_only = filter_by_severity(results, SEVERITY_CRITICAL)
+        alerts = filter_by_severity(results, SEVERITY_WARNING, SEVERITY_CRITICAL)
+    """
+    severity_set = set(severities)
+    return [lr for lr in labeled_results if lr.severity in severity_set]
