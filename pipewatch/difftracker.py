@@ -77,4 +77,14 @@ def diff_metrics(
 
 
 def any_regressions(diffs: list[MetricRegression]) -> bool:
+    """Return True if any entry in *diffs* is marked as a regression."""
     return any(d.regressed for d in diffs)
+
+
+def filter_regressions(diffs: list[MetricRegression]) -> list[MetricRegression]:
+    """Return only the entries from *diffs* that are marked as regressions.
+
+    Useful for reporting or alerting when you only care about the fields
+    that actually crossed the regression threshold.
+    """
+    return [d for d in diffs if d.regressed]
