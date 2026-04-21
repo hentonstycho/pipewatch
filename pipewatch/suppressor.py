@@ -73,3 +73,17 @@ def list_suppressions(base_dir: Path = SUPPRESSOR_DIR) -> list[dict]:
         except json.JSONDecodeError:
             continue
     return results
+
+
+def unsuppress_all(base_dir: Path = SUPPRESSOR_DIR) -> int:
+    """Remove all active suppressions. Returns the number of suppressions removed."""
+    if not base_dir.exists():
+        return 0
+    removed = 0
+    for p in base_dir.glob("*.json"):
+        try:
+            p.unlink()
+            removed += 1
+        except OSError:
+            continue
+    return removed
