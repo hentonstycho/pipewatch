@@ -40,6 +40,10 @@ def show_cmd(
     if pipeline_name:
         rows = [r for r in rows if r.pipeline == pipeline_name]
 
+    if not rows:
+        click.echo("No heatmap data found.", err=True)
+        sys.exit(0)
+
     click.echo(format_heatmap(rows))
 
     if fail_if_peak is not None:
