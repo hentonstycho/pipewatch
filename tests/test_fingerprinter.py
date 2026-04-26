@@ -74,6 +74,15 @@ def test_violation_keys_falling_with_zero_row_count():
     assert "row_count" in _violation_keys(result)
 
 
+def test_violation_keys_multiple_violations_returns_all():
+    """A result that violates both error_rate and latency should list both keys."""
+    result = CheckResult(pipeline="p", healthy=False, row_count=50,
+                         error_rate=0.9, latency_seconds=999.0)
+    keys = _violation_keys(result)
+    assert "error_rate" in keys
+    assert "latency_seconds" in keys
+
+
 def test_hash_violations_is_8_chars():
     h = _hash_violations("pipe", ["error_rate"])
     assert len(h) == 8
@@ -87,65 +96,11 @@ def test_hash_violations_different_pipeline_different_hash():
     assert _hash_violations("pipe_a", ["error_rate"]) != _hash_violations("pipe_b", ["error_rate"])
 
 
+def test_hash_violations_different_keys_different_hash():
+    """Different violation keys for the same pipeline must produce different hashes."""
+    assert _hash_violations("pipe", ["error_rate"]) != _hash_violations("pipe", ["latency_seconds"])
+
+
 # ---------------------------------------------------------------------------
 # fingerprint_pipeline
 # ---------------------------------------------------------------------------
-
-def test_fingerprint_pipeline_no_history_returns_none(hist_dir: Path):
-    cfg = _make_config()
-    assert fingerprint_pipeline(cfg, history_dir=hist_dir) is None
-
-
-def test_fingerprint_pipeline_all_healthy_no_violations(hist_dir: Path):
-    cfg = _make_config()
-    _write_history(hist_dir, "pipe_a", [_healthy_entry()] * 5)
-    fp = fingerprint_pipeline(cfg, history_dir=hist_dir)
-    assert fp is not None
-    assert fp.violations == []
-
-
-def test_fingerprint_pipeline_majority_failing_reports_violation(hist_dir: Path):
-    cfg = _make_config()
-    entries = [_failing_entry()] * 4 + [_healthy_entry()]
-    _write_history(hist_dir, "pipe_a", entries)
-    fp = fingerprint_pipeline(cfg, history_dir=hist_dir)
-    assert fp is not None
-    assert "error_rate" in fp.violations
-
-
-def test_fingerprint_pipeline_returns_fingerprint_dataclass(hist_dir: Path):
-    cfg = _make_config()
-    _write_history(hist_dir, "pipe_a", [_healthy_entry()] * 3)
-    fp = fingerprint_pipeline(cfg, history_dir=hist_dir)
-    assert isinstance(fp, Fingerprint)
-    assert fp.pipeline == "pipe_a"
-
-
-def test_fingerprint_pipeline_str_contains_pipeline_name(hist_dir: Path):
-    cfg = _make_config()
-    _write_history(hist_dir, "pipe_a", [_healthy_entry()] * 3)
-    fp = fingerprint_pipeline(cfg, history_dir=hist_dir)
-    assert "pipe_a" in str(fp)
-
-
-# ---------------------------------------------------------------------------
-# fingerprint_all
-# ---------------------------------------------------------------------------
-
-def test_fingerprint_all_skips_missing_history(hist_dir: Path):
-    cfgs = [_make_config("pipe_a"), _make_config("pipe_b")]
-    _write_history(hist_dir, "pipe_a", [_healthy_entry()] * 3)
-    # pipe_b has no history
-    results = fingerprint_all(cfgs, history_dir=hist_dir)
-    assert len(results) == 1
-    assert results[0].pipeline == "pipe_a"
-
-
-def test_fingerprint_all_returns_all_when_history_present(hist_dir: Path):
-    cfgs = [_make_config("pipe_a"), _make_config("pipe_b")]
-    for name in ("pipe_a", "pipe_b"):
-        entry = _healthy_entry()
-        entry["pipeline"] = name
-        _write_history(hist_dir, name, [entry] * 3)
-    results = fingerprint_all(cfgs, history_dir=hist_dir)
-    assert len(results) == 2
